@@ -1,0 +1,8 @@
+{
+  "track_id": "duplicate_query_20260423",
+  "type": "feature",
+  "status": "new",
+  "created_at": "2026-04-23T00:00:00Z",
+  "updated_at": "2026-04-23T00:00:00Z",
+  "description": "N+1 / Duplicate Query Warning"
+}
