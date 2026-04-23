@@ -15,6 +15,14 @@ bun install
 bun run build
 ```
 
+### Hot-Reloading (Real-time Changes)
+
+To see changes in real-time while developing the UI:
+
+1. **Start the Backend:** In the root directory, run `bun start`. This starts the query listener and the WebSocket server on port 3000.
+2. **Start the Frontend Dev Server:** In the `ui/` directory, run `bun start`. This starts the Angular dev server on http://localhost:4200.
+3. **Open Browser:** Navigate to http://localhost:4200. The UI will automatically refresh when you save changes to files in the `ui/src/` directory.
+
 ### Running
 
 1. Configure Django to send queries to the logger's socket on port 9999. In your Django `settings.py` file extend your `LOGGING` configuration with the following entries:
