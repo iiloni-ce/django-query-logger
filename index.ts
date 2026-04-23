@@ -23,7 +23,7 @@ process.on('uncaughtException', async (error) => {
 
 // Socket server
 Bun.listen({
-  hostname: 'localhost',
+  hostname: '0.0.0.0',
   port: 9999,
   socket: {
     data(_socket, data) {
