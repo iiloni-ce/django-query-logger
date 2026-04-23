@@ -1,6 +1,6 @@
 import {COMMA, ENTER} from '@angular/cdk/keycodes'
 import {DecimalPipe} from '@angular/common'
-import {AfterViewInit, Component, OnDestroy, TrackByFunction, ViewChild} from '@angular/core'
+import {AfterViewInit, Component, OnDestroy, OnInit, TrackByFunction, ViewChild} from '@angular/core'
 import {FormsModule} from '@angular/forms'
 import {MatButtonModule} from '@angular/material/button'
 import {MatChipEditedEvent, MatChipInputEvent, MatChipsModule} from '@angular/material/chips'
@@ -44,7 +44,7 @@ import {WebSocketService} from './web-socket.service'
   templateUrl: './app.component.html',
   styleUrl: './app.component.scss',
 })
-export class AppComponent implements AfterViewInit, OnDestroy {
+export class AppComponent implements AfterViewInit, OnDestroy, OnInit {
   dataSource = new MatTableDataSource<Query>()
   displayedColumns = ['id', 'timestamp', 'duration', 'sql']
   elapsedTime = 0
@@ -52,8 +52,8 @@ export class AppComponent implements AfterViewInit, OnDestroy {
   sidenavOpened = false
   // Filters
   readonly separatorKeysCodes = [ENTER, COMMA] as const
-  filterInclusivity = true
-  filters: Set<string> = new Set()
+  inclusiveFilters: Set<string> = new Set()
+  exclusiveFilters: Set<string> = new Set()
   @ViewChild(MatPaginator) paginator: MatPaginator | undefined
   @ViewChild(MatSort) sort: MatSort | undefined
   private subscription: Subscription | undefined
@@ -62,18 +62,21 @@ export class AppComponent implements AfterViewInit, OnDestroy {
     private dialog: MatDialog,
     private webSocketService: WebSocketService,
   ) {
-    const memoizeLast = this.createMemoizedLast()
-    this.dataSource.filterPredicate = (query, filter) => {
-      const filters = memoizeLast(filter)
-      if (this.filterInclusivity) {
-        return filters.every(filter => query.sql.toLowerCase().includes(filter))
-      } else {
-        return !filters.some(filter => query.sql.toLowerCase().includes(filter))
-      }
+    this.dataSource.filterPredicate = (query, filterJSON) => {
+      if (!filterJSON) return true
+      const {inclusive, exclusive} = JSON.parse(filterJSON)
+      const sql = query.sql.toLowerCase()
+      const matchesInclusive = (inclusive as string[]).every(f => sql.includes(f))
+      const matchesExclusive = !(exclusive as string[]).some(f => sql.includes(f))
+      return matchesInclusive && matchesExclusive
     }
   }
 
   trackById: TrackByFunction<Query> = (_index: number, {id}: Query): number => id
+
+  ngOnInit() {
+    this.loadFilters()
+  }
 
   ngAfterViewInit() {
     this.dataSource.paginator = this.paginator ?? null
@@ -126,8 +129,6 @@ export class AppComponent implements AfterViewInit, OnDestroy {
   clear() {
     this.sidenavOpened = false
     this.dataSource.data = []
-    this.filters.clear()
-    this.applyFilters()
     delete this.selectedQuery
     this.updateElapsedTime()
     this.webSocketService.sendMessage({action: 'clear'})
@@ -139,53 +140,82 @@ export class AppComponent implements AfterViewInit, OnDestroy {
   }
 
   applyFilters() {
-    this.dataSource.filter = this.filters.size ? [...this.filters].join('\0').toLowerCase() : ''
+    if (this.inclusiveFilters.size || this.exclusiveFilters.size) {
+      this.dataSource.filter = JSON.stringify({
+        inclusive: [...this.inclusiveFilters].map(f => f.toLowerCase()),
+        exclusive: [...this.exclusiveFilters].map(f => f.toLowerCase()),
+      })
+    } else {
+      this.dataSource.filter = ''
+    }
+    this.saveFilters()
     this.updateElapsedTime()
     this.dataSource.paginator?.firstPage()
   }
 
-  toggleFilterInclusivity() {
-    this.filterInclusivity = !this.filterInclusivity
-    this.applyFilters()
-  }
-
-  addFilter(event: MatChipInputEvent) {
+  addFilter(event: MatChipInputEvent, type: 'inclusive' | 'exclusive') {
     const newFilter = event.value.trim()
 
     if (newFilter) {
-      this.filters.add(newFilter)
+      if (type === 'inclusive') {
+        this.inclusiveFilters.add(newFilter)
+      } else {
+        this.exclusiveFilters.add(newFilter)
+      }
       this.applyFilters()
     }
     event.chipInput.clear()
   }
 
-  editFilter(previousFilter: string, event: MatChipEditedEvent) {
+  editFilter(previousFilter: string, event: MatChipEditedEvent, type: 'inclusive' | 'exclusive') {
     const newFilter = event.value.trim()
 
     if (newFilter !== previousFilter) {
-      this.removeFilter(previousFilter)
-      if (newFilter) this.filters.add(newFilter)
+      this.removeFilter(previousFilter, type)
+      if (newFilter) {
+        if (type === 'inclusive') {
+          this.inclusiveFilters.add(newFilter)
+        } else {
+          this.exclusiveFilters.add(newFilter)
+        }
+      }
       this.applyFilters()
     }
   }
 
-  removeFilter(filter: string) {
-    this.filters.delete(filter)
+  removeFilter(filter: string, type: 'inclusive' | 'exclusive') {
+    if (type === 'inclusive') {
+      this.inclusiveFilters.delete(filter)
+    } else {
+      this.exclusiveFilters.delete(filter)
+    }
     this.applyFilters()
   }
 
-  private createMemoizedLast() {
-    let lastInput: string | null = null
-    let lastOutput: string[] | null = null
+  clearFilters() {
+    this.inclusiveFilters.clear()
+    this.exclusiveFilters.clear()
+    this.applyFilters()
+  }
 
-    return (input: string): string[] => {
-      if (input === lastInput) {
-        return lastOutput!
-      }
+  private saveFilters() {
+    localStorage.setItem('inclusiveFilters', JSON.stringify([...this.inclusiveFilters]))
+    localStorage.setItem('exclusiveFilters', JSON.stringify([...this.exclusiveFilters]))
+  }
 
-      lastInput = input
-      lastOutput = input.split('\0')
-      return lastOutput
+  private loadFilters() {
+    const inclusive = localStorage.getItem('inclusiveFilters')
+    const exclusive = localStorage.getItem('exclusiveFilters')
+
+    if (inclusive) {
+      this.inclusiveFilters = new Set(JSON.parse(inclusive))
+    }
+    if (exclusive) {
+      this.exclusiveFilters = new Set(JSON.parse(exclusive))
+    }
+
+    if (inclusive || exclusive) {
+      this.applyFilters()
     }
   }
 }

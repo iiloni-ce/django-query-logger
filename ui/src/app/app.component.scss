@@ -1,5 +1,5 @@
 table {
-  height: 100vh;
+  width: 100%;
 
   .mat-column-id {
     width: 80px;
@@ -32,14 +32,18 @@ table {
   width: 800px;
 }
 
-.filter {
+.filter-container {
   align-items: center;
   display: flex;
-  gap: 8px;
-  height: 64px;
+  gap: 16px;
+  padding: 8px 0;
 }
 
 .filter-input {
-  margin: 8px 0;
-  width: 100%;
+  flex: 1;
+
+  ::ng-deep .mat-mdc-form-field-flex {
+    height: 56px;
+    overflow-y: auto;
+  }
 }

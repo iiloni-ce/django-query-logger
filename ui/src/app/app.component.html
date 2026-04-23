@@ -3,31 +3,52 @@
     <table mat-table recycleRows [dataSource]="dataSource" matSort matSortActive="id" matSortDirection="desc" matSortDisableClear [trackBy]="trackById">
       <ng-container matColumnDef="filter">
         <th mat-header-cell *matHeaderCellDef colspan="5">
-          <div class="filter">
-            <button mat-icon-button (click)="toggleFilterInclusivity()">
-              <mat-icon [fontIcon]="filterInclusivity ? 'add_circle' : 'do_not_disturb_on'"/>
-            </button>
+          <div class="filter-container">
             <mat-form-field appearance="outline" class="filter-input">
-              <mat-label>Filter queries ({{ filterInclusivity ? 'inclusive' : 'exclusive' }})</mat-label>
-              <mat-chip-grid #chipGrid>
-                @for (filter of filters; track filter) {
+              <mat-label>Inclusive Filters (must contain)</mat-label>
+              <mat-chip-grid #inclusiveChipGrid>
+                @for (filter of inclusiveFilters; track filter) {
                   <mat-chip-row
-                    (removed)="removeFilter(filter)"
+                    (removed)="removeFilter(filter, 'inclusive')"
                     [editable]="true"
-                    (edited)="editFilter(filter, $event)">
+                    (edited)="editFilter(filter, $event, 'inclusive')">
                     {{ filter }}
                     <button matChipRemove>
                       <mat-icon>cancel</mat-icon>
                     </button>
                   </mat-chip-row>
                 }
-                <input placeholder="New filter..."
-                       [matChipInputFor]="chipGrid"
+                <input [matChipInputFor]="inclusiveChipGrid"
                        [matChipInputSeparatorKeyCodes]="separatorKeysCodes"
                        [matChipInputAddOnBlur]="true"
-                       (matChipInputTokenEnd)="addFilter($event)"/>
+                       (matChipInputTokenEnd)="addFilter($event, 'inclusive')"/>
               </mat-chip-grid>
             </mat-form-field>
+
+            <mat-form-field appearance="outline" class="filter-input">
+              <mat-label>Exclusive Filters (must not contain)</mat-label>
+              <mat-chip-grid #exclusiveChipGrid>
+                @for (filter of exclusiveFilters; track filter) {
+                  <mat-chip-row
+                    (removed)="removeFilter(filter, 'exclusive')"
+                    [editable]="true"
+                    (edited)="editFilter(filter, $event, 'exclusive')">
+                    {{ filter }}
+                    <button matChipRemove>
+                      <mat-icon>cancel</mat-icon>
+                    </button>
+                  </mat-chip-row>
+                }
+                <input [matChipInputFor]="exclusiveChipGrid"
+                       [matChipInputSeparatorKeyCodes]="separatorKeysCodes"
+                       [matChipInputAddOnBlur]="true"
+                       (matChipInputTokenEnd)="addFilter($event, 'exclusive')"/>
+              </mat-chip-grid>
+            </mat-form-field>
+
+            <button mat-stroked-button color="warn" (click)="clearFilters()" [disabled]="!inclusiveFilters.size && !exclusiveFilters.size">
+              Clear Filters
+            </button>
           </div>
         </th>
       </ng-container>
@@ -74,8 +95,8 @@
         </td>
       </ng-container>
 
-      <tr mat-header-row *matHeaderRowDef="displayedColumns.concat('actions'); sticky: true"></tr>
       <tr mat-header-row *matHeaderRowDef="['filter']; sticky: true"></tr>
+      <tr mat-header-row *matHeaderRowDef="displayedColumns.concat('actions'); sticky: true"></tr>
       <tr mat-row *matRowDef="let query; columns: displayedColumns;" (click)="showSql(query)"></tr>
       <tr mat-footer-row *matFooterRowDef="['elapsedTime', 'pagination']; sticky: true"></tr>
     </table>
