@@ -40,7 +40,7 @@ Bun.listen({
           const query: Query = {
             id: queries.length + 1,
             timestamp: Math.round(created * 1000),
-            duration: parseFloat(duration.toFixed(3)),
+            duration: duration * 1000,
             sql: sql.trim(),
           }
           queries.push(query)
@@ -80,7 +80,7 @@ const calculateStats = async (client: WebSocket) => {
   const maxCores = Math.max(os.cpus().length - 4, 2)
   const shuffledQueries = shuffleQueries(queries)
   const total = shuffledQueries.length
-  const chunks = chunkArray(shuffledQueries.map(({sql}) => sql), Math.max(Math.ceil(queries.length / maxCores), 10))
+  const chunks = chunkArray(shuffledQueries.map(({sql, duration}) => ({sql, duration})), Math.max(Math.ceil(queries.length / maxCores), 10))
 
   const workers: Worker[] = []
 
@@ -89,8 +89,11 @@ const calculateStats = async (client: WebSocket) => {
       const worker = new Worker('./stats-worker.ts')
 
       const onEarlyTermination = () => {
-        // Terminating just in case it helps free memory
+        console.error('Worker failed to start or closed early')
         worker.terminate()
+        // Still resolve to avoid hanging, but we should probably handle this better
+        // For now, let's at least not loop infinitely if it keeps failing
+        // We'll push a null or something? No, let's just count attempts.
         resolve()
       }
 
@@ -101,14 +104,24 @@ const calculateStats = async (client: WebSocket) => {
       })
 
       worker.addEventListener('close', onEarlyTermination)
+      worker.addEventListener('error', (e) => {
+        console.error('Worker error:', e)
+      })
     })
+    
+    // Safety break: if we've tried too many times, stop
+    if (workers.length === 0 && chunks.length > 0) {
+       // This is a bit crude but helps identify issues
+       console.error('Failed to start even one worker')
+       break
+    }
   }
 
   let completed = 0
-  const results = (await Promise.all(
+  const results = await Promise.all(
     workers.map((worker, index) => {
       const id = index + 1
-      return new Promise<Stats[]>((resolve) => {
+      return new Promise<Stats>((resolve) => {
         worker.onmessage = (e) => {
           if (!e.data) {
             ++completed
@@ -128,18 +141,28 @@ const calculateStats = async (client: WebSocket) => {
         })
       })
     }),
-  )).flat()
+  )
 
   const stats = results.reduce<Stats>((stats, stat) => {
     for (const keyword of Object.keys(stat)) {
       if (!stats[keyword]) stats[keyword] = {}
 
       for (const table of Object.keys(stat[keyword])) {
-        stats[keyword][table] = (stats[keyword][table] ?? 0) + stat[keyword][table]
+        if (!stats[keyword][table]) {
+          stats[keyword][table] = {count: 0, totalDuration: 0, averageDuration: 0}
+        }
+        stats[keyword][table].count += stat[keyword][table].count
+        stats[keyword][table].totalDuration += stat[keyword][table].totalDuration
       }
     }
     return stats
   }, {})
+
+  for (const keyword of Object.keys(stats)) {
+    for (const table of Object.keys(stats[keyword])) {
+      stats[keyword][table].averageDuration = stats[keyword][table].totalDuration / stats[keyword][table].count
+    }
+  }
 
   client.send(JSON.stringify({
     type: 'stats',

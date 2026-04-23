@@ -4,14 +4,15 @@ import {MatDialogActions, MatDialogClose, MatDialogContent, MatDialogTitle} from
 import {MatProgressBarModule} from '@angular/material/progress-bar'
 import {Subscription} from 'rxjs'
 import {WebSocketService} from '../web-socket.service'
-import {Stats} from '../types'
+import {StatEntry, Stats} from '../types'
 import {DecimalPipe, KeyValue, KeyValuePipe, NgForOf, UpperCasePipe} from '@angular/common'
 import {MatCardModule} from '@angular/material/card'
+import {ElapsedPipe} from '../elapsed.pipe'
 
 @Component({
   selector: 'app-stats-dialog',
   standalone: true,
-  imports: [MatDialogTitle, MatDialogContent, MatDialogActions, MatDialogClose, MatButtonModule, MatProgressBarModule, KeyValuePipe, NgForOf, UpperCasePipe, MatCardModule, DecimalPipe],
+  imports: [MatDialogTitle, MatDialogContent, MatDialogActions, MatDialogClose, MatButtonModule, MatProgressBarModule, KeyValuePipe, NgForOf, UpperCasePipe, MatCardModule, DecimalPipe, ElapsedPipe],
   templateUrl: './stats-dialog.component.html',
   styleUrls: ['./stats-dialog.component.scss'],
 })
@@ -40,7 +41,7 @@ export class StatsDialogComponent implements OnDestroy {
     this.subscription?.unsubscribe()
   }
 
-  sortTables = (a: KeyValue<string, number>, b: KeyValue<string, number>): number => {
-    return a.value === b.value ? a.key.localeCompare(b.key) : b.value - a.value
+  sortTables = (a: KeyValue<string, StatEntry>, b: KeyValue<string, StatEntry>): number => {
+    return a.value.count === b.value.count ? a.key.localeCompare(b.key) : b.value.count - a.value.count
   }
 }

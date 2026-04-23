@@ -14,17 +14,42 @@ const units = [
 })
 export class ElapsedPipe implements PipeTransform {
   transform(elapsedTimeMs: number): string {
+    if (elapsedTimeMs === 0) return '0ms'
+
     let remainingTime = elapsedTimeMs
-    let result = units.map(({unit, value}) => {
+    const resultParts: string[] = []
+
+    for (const {unit, value} of units) {
+      if (unit === 'ms') {
+        if (remainingTime > 0 || resultParts.length === 0) {
+          // If we have less than 1ms total, show high precision
+          if (resultParts.length === 0 && remainingTime < 1) {
+            const formatted = remainingTime.toFixed(3)
+            const trimmed = formatted.replace(/\.?0+$/, '')
+            if (trimmed !== '0') {
+              resultParts.push(`${trimmed}${unit}`)
+            } else {
+              resultParts.push(`0${unit}`)
+            }
+          } else {
+            // Otherwise round to whole ms
+            const amount = Math.round(remainingTime)
+            if (amount > 0 || resultParts.length === 0) {
+              resultParts.push(`${amount}${unit}`)
+            }
+          }
+        }
+        break
+      }
+
       if (remainingTime >= value) {
         const amount = Math.floor(remainingTime / value)
         remainingTime -= amount * value
-        return `${amount}${unit}`
+        resultParts.push(`${amount}${unit}`)
       }
-      return ''
-    }).filter(Boolean).join(' ')
+    }
 
+    const result = resultParts.join(' ')
     return result || '0ms'
   }
-
 }

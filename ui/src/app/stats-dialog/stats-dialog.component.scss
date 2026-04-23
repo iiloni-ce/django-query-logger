@@ -13,11 +13,29 @@
   background-color: #333;
   width: fit-content;
 
-  td:first-child {
-    padding-right: 10px;
+  table {
+    width: 100%;
+    border-collapse: collapse;
   }
 
-  td:last-child {
+  th {
+    text-align: left;
+    padding-right: 16px;
+    font-size: 0.8em;
+    color: #aaa;
+    text-transform: uppercase;
+  }
+
+  td {
+    padding-right: 16px;
+    white-space: nowrap;
+  }
+
+  th:not(:first-child), td:not(:first-child) {
     text-align: right;
+  }
+
+  td:last-child, th:last-child {
+    padding-right: 0;
   }
 }

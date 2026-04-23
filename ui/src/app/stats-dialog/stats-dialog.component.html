@@ -10,9 +10,19 @@
         </mat-card-header>
         <mat-card-content>
           <table>
-            <tr *ngFor="let count of stat.value | keyvalue : sortTables">
-              <td>{{ count.key }}</td>
-              <td>{{ count.value | number }}</td>
+            <thead>
+              <tr>
+                <th>Table</th>
+                <th>Count</th>
+                <th>Avg</th>
+                <th>Total</th>
+              </tr>
+            </thead>
+            <tr *ngFor="let statEntry of stat.value | keyvalue : sortTables">
+              <td>{{ statEntry.key }}</td>
+              <td>{{ statEntry.value.count | number }}</td>
+              <td>{{ statEntry.value.averageDuration | elapsed }}</td>
+              <td>{{ statEntry.value.totalDuration | elapsed }}</td>
             </tr>
           </table>
         </mat-card-content>

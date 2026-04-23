@@ -7,7 +7,13 @@ export type Query = {
 
 export type Queries = Query[]
 
-export type Stats = Record<string, Record<string, number>>
+export type StatEntry = {
+  count: number;
+  totalDuration: number;
+  averageDuration: number;
+}
+
+export type Stats = Record<string, Record<string, StatEntry>>
 
 export type StatsProgress = [number, number]
 
