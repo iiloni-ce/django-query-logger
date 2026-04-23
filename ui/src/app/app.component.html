@@ -91,7 +91,7 @@
 
       <ng-container matColumnDef="pagination">
         <td mat-footer-cell *matFooterCellDef colspan="2">
-          <mat-paginator [pageSizeOptions]="[20, 50, 100]" pageSize="20" showFirstLastButtons></mat-paginator>
+          <mat-paginator [pageSizeOptions]="[20, 50, 100, 1000]" [pageSize]="pageSize" (page)="onPageEvent($event)" showFirstLastButtons></mat-paginator>
         </td>
       </ng-container>
 

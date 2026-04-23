@@ -8,7 +8,7 @@ import {MatDialog} from '@angular/material/dialog'
 import {MatFormFieldModule} from '@angular/material/form-field'
 import {MatIconModule} from '@angular/material/icon'
 import {MatInputModule} from '@angular/material/input'
-import {MatPaginator, MatPaginatorModule} from '@angular/material/paginator'
+import {MatPaginator, MatPaginatorModule, PageEvent} from '@angular/material/paginator'
 import {MatSidenavModule} from '@angular/material/sidenav'
 import {MatSort, MatSortModule} from '@angular/material/sort'
 import {MatTableDataSource, MatTableModule} from '@angular/material/table'
@@ -54,6 +54,8 @@ export class AppComponent implements AfterViewInit, OnDestroy, OnInit {
   readonly separatorKeysCodes = [ENTER, COMMA] as const
   inclusiveFilters: Set<string> = new Set()
   exclusiveFilters: Set<string> = new Set()
+  // Pagination
+  pageSize = 20
   @ViewChild(MatPaginator) paginator: MatPaginator | undefined
   @ViewChild(MatSort) sort: MatSort | undefined
   private subscription: Subscription | undefined
@@ -76,6 +78,7 @@ export class AppComponent implements AfterViewInit, OnDestroy, OnInit {
 
   ngOnInit() {
     this.loadFilters()
+    this.loadPageSize()
   }
 
   ngAfterViewInit() {
@@ -198,6 +201,11 @@ export class AppComponent implements AfterViewInit, OnDestroy, OnInit {
     this.applyFilters()
   }
 
+  onPageEvent(event: PageEvent) {
+    this.pageSize = event.pageSize
+    this.savePageSize()
+  }
+
   private saveFilters() {
     localStorage.setItem('inclusiveFilters', JSON.stringify([...this.inclusiveFilters]))
     localStorage.setItem('exclusiveFilters', JSON.stringify([...this.exclusiveFilters]))
@@ -216,6 +224,17 @@ export class AppComponent implements AfterViewInit, OnDestroy, OnInit {
 
     if (inclusive || exclusive) {
       this.applyFilters()
+    }
+  }
+
+  private savePageSize() {
+    localStorage.setItem('pageSize', this.pageSize.toString())
+  }
+
+  private loadPageSize() {
+    const pageSize = localStorage.getItem('pageSize')
+    if (pageSize) {
+      this.pageSize = parseInt(pageSize, 10)
     }
   }
 }
