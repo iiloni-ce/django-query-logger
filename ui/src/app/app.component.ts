@@ -62,7 +62,6 @@ export class AppComponent implements AfterViewInit, OnDestroy, OnInit {
   @ViewChild(MatSort) sort: MatSort | undefined
   private subscription: Subscription | undefined
   private knownIds = new Set<number>()
-  private readonly MAX_QUERIES = 5000
 
   constructor(
     private dialog: MatDialog,
@@ -97,14 +96,7 @@ export class AppComponent implements AfterViewInit, OnDestroy, OnInit {
 
         if (newQueries.length > 0) {
           newQueries.forEach(q => this.knownIds.add(q.id))
-          const updatedData = this.dataSource.data.concat(newQueries)
-
-          if (updatedData.length > this.MAX_QUERIES) {
-            const removed = updatedData.splice(0, updatedData.length - this.MAX_QUERIES)
-            removed.forEach(q => this.knownIds.delete(q.id))
-          }
-
-          this.dataSource.data = updatedData
+          this.dataSource.data = this.dataSource.data.concat(newQueries)
           this.updateElapsedTime()
         }
       },

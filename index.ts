@@ -44,9 +44,6 @@ Bun.listen({
             sql: sql.trim(),
           }
           queries.push(query)
-          if (queries.length > 5000) {
-            queries.shift()
-          }
 
           const msg = JSON.stringify({
             type: 'queries',
