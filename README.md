@@ -34,7 +34,7 @@ To see changes in real-time while developing the UI:
             "socket": {
                 "level": "DEBUG",
                 "class": "logging.handlers.SocketHandler",
-                "host": "localhost",
+                "host": "172.17.0.1", # if running BEAM in docker or "localhost" if running BEAM locally
                 "port": 9999,
             },
         },
