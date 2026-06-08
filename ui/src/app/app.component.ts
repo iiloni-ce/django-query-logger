@@ -13,7 +13,7 @@ import {MatSidenavModule} from '@angular/material/sidenav'
 import {MatSort, MatSortModule} from '@angular/material/sort'
 import {MatTableDataSource, MatTableModule} from '@angular/material/table'
 import {Highlight} from 'ngx-highlightjs'
-import {Subscription} from 'rxjs'
+import {Subscription, bufferTime, filter} from 'rxjs'
 import {ElapsedPipe} from './elapsed.pipe'
 import {SidenavComponent} from './sidenav/sidenav.component'
 import {StatsDialogComponent} from './stats-dialog/stats-dialog.component'
@@ -54,22 +54,23 @@ export class AppComponent implements AfterViewInit, OnDestroy, OnInit {
   readonly separatorKeysCodes = [ENTER, COMMA] as const
   inclusiveFilters: Set<string> = new Set()
   exclusiveFilters: Set<string> = new Set()
+  private inclusiveRegexes: RegExp[] = []
+  private exclusiveRegexes: RegExp[] = []
   // Pagination
   pageSize = 20
   @ViewChild(MatPaginator) paginator: MatPaginator | undefined
   @ViewChild(MatSort) sort: MatSort | undefined
   private subscription: Subscription | undefined
+  private knownIds = new Set<number>()
 
   constructor(
     private dialog: MatDialog,
     private webSocketService: WebSocketService,
   ) {
-    this.dataSource.filterPredicate = (query, filterJSON) => {
-      if (!filterJSON) return true
-      const {inclusive, exclusive} = JSON.parse(filterJSON)
-      const sql = query.sql.toLowerCase()
-      const matchesInclusive = (inclusive as string[]).every(f => sql.includes(f))
-      const matchesExclusive = !(exclusive as string[]).some(f => sql.includes(f))
+    this.dataSource.filterPredicate = (query) => {
+      const sql = query.sql
+      const matchesInclusive = this.inclusiveRegexes.every(re => re.test(sql))
+      const matchesExclusive = !this.exclusiveRegexes.some(re => re.test(sql))
       return matchesInclusive && matchesExclusive
     }
   }
@@ -85,10 +86,19 @@ export class AppComponent implements AfterViewInit, OnDestroy, OnInit {
     this.dataSource.paginator = this.paginator ?? null
     this.dataSource.sort = this.sort ?? null
 
-    this.subscription = this.webSocketService.queries$.subscribe({
-      next: (queries) => {
-        this.dataSource.data = this.dataSource.data.concat(queries)
-        this.updateElapsedTime()
+    this.subscription = this.webSocketService.queries$.pipe(
+      bufferTime(200),
+      filter(batches => batches.length > 0),
+    ).subscribe({
+      next: (batches) => {
+        const flattened = batches.flat()
+        const newQueries = flattened.filter(q => !this.knownIds.has(q.id))
+
+        if (newQueries.length > 0) {
+          newQueries.forEach(q => this.knownIds.add(q.id))
+          this.dataSource.data = this.dataSource.data.concat(newQueries)
+          this.updateElapsedTime()
+        }
       },
       error: (error) => console.error('Error in receiving messages:', error),
     })
@@ -100,8 +110,9 @@ export class AppComponent implements AfterViewInit, OnDestroy, OnInit {
   }
 
   updateElapsedTime() {
-    if (this.dataSource.filteredData.length > 1) {
-      this.elapsedTime = this.dataSource.filteredData[this.dataSource.filteredData.length - 1].timestamp - this.dataSource.filteredData[0].timestamp
+    const data = this.dataSource.filter ? this.dataSource.filteredData : this.dataSource.data
+    if (data.length > 1) {
+      this.elapsedTime = data[data.length - 1].timestamp - data[0].timestamp
     } else {
       this.elapsedTime = 0
     }
@@ -132,6 +143,7 @@ export class AppComponent implements AfterViewInit, OnDestroy, OnInit {
   clear() {
     this.sidenavOpened = false
     this.dataSource.data = []
+    this.knownIds.clear()
     delete this.selectedQuery
     this.updateElapsedTime()
     this.webSocketService.sendMessage({action: 'clear'})
@@ -143,11 +155,11 @@ export class AppComponent implements AfterViewInit, OnDestroy, OnInit {
   }
 
   applyFilters() {
+    this.inclusiveRegexes = [...this.inclusiveFilters].map(f => new RegExp(this.escapeRegExp(f), 'i'))
+    this.exclusiveRegexes = [...this.exclusiveFilters].map(f => new RegExp(this.escapeRegExp(f), 'i'))
+
     if (this.inclusiveFilters.size || this.exclusiveFilters.size) {
-      this.dataSource.filter = JSON.stringify({
-        inclusive: [...this.inclusiveFilters].map(f => f.toLowerCase()),
-        exclusive: [...this.exclusiveFilters].map(f => f.toLowerCase()),
-      })
+      this.dataSource.filter = 'active'
     } else {
       this.dataSource.filter = ''
     }
@@ -237,4 +249,9 @@ export class AppComponent implements AfterViewInit, OnDestroy, OnInit {
       this.pageSize = parseInt(pageSize, 10)
     }
   }
+
+  private escapeRegExp(string: string) {
+    return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  }
 }
+
