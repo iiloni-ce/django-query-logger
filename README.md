@@ -2,7 +2,7 @@
 
 This tool allows you to stream the queries that are being executed in realtime from a Django application for review, profiling, filtering, formatting, and analysis.
 
-## Development Setup
+## Setup for use with a Django Application
 
 ### Prerequisites
 
@@ -14,15 +14,6 @@ Install the dependencies and compile the interface:
 bun install
 bun run build
 ```
-
-### Hot-Reloading (Real-time Changes)
-
-To see changes in real-time while developing the UI:
-
-1. **Start the Backend:** In the root directory, run `bun start`. This starts the query listener and the WebSocket server on port 3000.
-2. **Start the Frontend Dev Server:** In the `ui/` directory, run `bun start`. This starts the Angular dev server on http://localhost:4200.
-3. **Open Browser:** Navigate to http://localhost:4200. The UI will automatically refresh when you save changes to files in the `ui/src/` directory.
-
 ### Running
 
 1. Configure Django to send queries to the logger's socket on port 9999. In your Django `settings.py` file extend your `LOGGING` configuration with the following entries:
@@ -34,7 +25,10 @@ To see changes in real-time while developing the UI:
             "socket": {
                 "level": "DEBUG",
                 "class": "logging.handlers.SocketHandler",
-                "host": "172.17.0.1", # if running BEAM in docker or "localhost" if running BEAM locally
+                # choose one of the below "host" based on how you are running your django app
+                "host": "172.17.0.1", # linux docker engine
+                # "host": "host.docker.internal" # docker desktop
+                # "host": "localhost" # locally
                 "port": 9999,
             },
         },
@@ -56,3 +50,11 @@ To see changes in real-time while developing the UI:
 ![Django Query Logger queries](ui/.media/ui.webp)
 
 ![Django Query Logger stats](ui/.media/stats.webp)
+
+### Hot-Reloading when Developing `django-query-logger`
+
+To see changes in real-time while developing the UI:
+
+1. **Start the Backend:** In the root directory, run `bun start`. This starts the query listener and the WebSocket server on port 3000.
+2. **Start the Frontend Dev Server:** In the `ui/` directory, run `bun start`. This starts the Angular dev server on http://localhost:4200.
+3. **Open Browser:** Navigate to http://localhost:4200. The UI will automatically refresh when you save changes to files in the `ui/src/` directory.
